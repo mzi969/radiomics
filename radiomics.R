@@ -7,14 +7,6 @@ library(ResourceSelection)
 library(RColorBrewer) 
 library(rmda)
 library(MASS)
-my.col1 <- brewer.pal(9,"RdYlGn")
-my.col2 <- brewer.pal(9,"RdGy")
-my.col3 <- brewer.pal(9,"RdBu")
-my.col4 <- brewer.pal(9,"PuOr")
-my.col5 <- brewer.pal(9,"PRGn")
-my.col6 <- brewer.pal(9,"BrBG")
-my.col7 <- brewer.pal(9,"Set1")
-
 getwd()  
 setwd("D:/muzi/Desktop/study")  
 
@@ -27,8 +19,6 @@ train <- train[,-1]
 test <- test[,-1]
 train_label <- train$group
 test_label  <- test$group
-#train2 <- train[,-1]
-#test2 <- test[,-1]
 
 standardization <- function(data0, data1 = NULL, data2 = NULL,
                             type = c("minmax", "zscore")){
@@ -203,7 +193,6 @@ mRME_index=mrmr@filters[[as.character(mrmr@target_indices)]]
 train5<- mrmr_feature[,mRME_index]
 dim(train5) 
 
-library(MASS)
 model <- polr(as.factor(train$group)~., data = train5, Hess=TRUE)
 tstep <- step(model)
 summary(tstep)
