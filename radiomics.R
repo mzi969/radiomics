@@ -20,7 +20,6 @@ setwd("D:/muzi/Desktop/study")
 
 train <- read.csv("primary_radiomic.csv") 
 test <- read.csv("validation_radiomic.csv") 
-
 train <- read.csv("primary_clinical.csv") 
 test <- read.csv("validation_clinical.csv") 
 
@@ -28,9 +27,9 @@ train <- train[,-1]
 test <- test[,-1]
 train_label <- train$group
 test_label  <- test$group
-
 #train2 <- train[,-1]
 #test2 <- test[,-1]
+
 standardization <- function(data0, data1 = NULL, data2 = NULL,
                             type = c("minmax", "zscore")){
 
@@ -138,6 +137,7 @@ standardization <- function(data0, data1 = NULL, data2 = NULL,
 df_standed <- standardization(data0 = train[,-1], data1 = test[,-1] , type = "zscore")
 train2 <- df_standed$data0
 test2 <- df_standed$data1
+                       
 reduce_redundency <- function (dat, threshold = 0.9, method = "spearman") 
 {
   if (!("data.frame" %in% class(dat))) {
@@ -217,15 +217,10 @@ library(MASS)
 model <- polr(as.factor(train$group) ~., data = train6, Hess=TRUE)
 summary(model)
 
-
 (ctable <- coef(summary(model)))
-
 p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
-
 (ctable <- cbind(ctable, "p value" = p))
-
 (ci <- confint(model))
-
 exp(cbind(OR = coef(model), ci))
 
 library("brant")
@@ -255,27 +250,21 @@ pred_test_p <- predict(model,newdata=test2,type="probs")
 write.csv(cbind(train6,Radscore_train,pred_train_p,pred_train_c),"result_train.csv")
 write.csv(cbind(test6,Radscore_test,pred_test_p,pred_test_c),"result_test.csv")
 
-
 dt_train <- data.frame(Rad_score = Radscore_train) 
-
 ddist_train <- datadist(dt_train)
 options(datadist="ddist_train")
 lrm_train <- lrm(train_label ~ .,x=T,y=T,data=dt_train)
 lrm_train    
 summary(lrm_train)  
-
 va.train <- validate(lrm_train,method="boot",B=1000,dxy=T)
 cal.train <- calibrate(lrm_train,method="boot",B=1000)
-
 write.csv(cal.train,"cal_train.csv")
-
 Dxy_train = va.train[rownames(va.train)=="Dxy", colnames(va.train)=="index.corrected"]
 orig_Dxy_train = va.train[rownames(va.train)=="Dxy", colnames(va.train)=="index.orig"]
 bias_corrected_c_index_train  <- abs(Dxy_train)/2+0.5
 orig_c_index_train <- abs(orig_Dxy_train)/2+0.5
 orig_c_index_train            
 bias_corrected_c_index_train  
-
 c_train <- rcorrcens(train_label~predict(lrm_train,newdata=dt_train),data=dt_train)  #C-index置信区间，与AUC略有不同，计算精度问题？
 c_train[1,1]
 c_train[1,1]-1.96*c_train[1,4]/2
@@ -283,16 +272,13 @@ c_train[1,1]+1.96*c_train[1,4]/2
 
 
 dt_test <- data.frame(Rad_score = Radscore_test) 
-
 ddist_test <- datadist(dt_test)
 options(datadist="ddist_test")
 lrm_test <- lrm(test_label ~ .,data=dt_test,x=T,y=T)
 lrm_test    
 summary(lrm_test) 
-
 va.test <- validate(lrm_test,method="boot",B=1000,dxy=T) 
 cal.test <- calibrate(lrm_test,method="boot",B=1000)
-
 write.csv(cal.test,"cal.test.csv")
 Dxy_test = va.test[rownames(va.test)=="Dxy", colnames(va.test)=="index.corrected"]
 orig_Dxy_test = va.test[rownames(va.test)=="Dxy", colnames(va.test)=="index.orig"]
@@ -300,7 +286,6 @@ bias_corrected_c_index_test <- abs(Dxy_test)/2+0.5
 orig_c_index_test <- abs(orig_Dxy_test)/2+0.5
 orig_c_index_test
 bias_corrected_c_index_test
-
 c_test <- rcorrcens(test_label~predict(lrm_test,newdata=dt_test),data=dt_test) 
 c_test[1,1]
 c_test[1,1]
