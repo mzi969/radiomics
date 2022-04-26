@@ -9,17 +9,16 @@ library(rmda)
 library(MASS)
 getwd()  
 setwd("D:/muzi/Desktop/study")  
-
 train <- read.csv("primary_radiomic.csv") 
 test <- read.csv("validation_radiomic.csv") 
 train <- read.csv("primary_clinical.csv") 
 test <- read.csv("validation_clinical.csv") 
-
 train <- train[,-1]
 test <- test[,-1]
 train_label <- train$group
 test_label  <- test$group
 
+#Z-score normalization
 standardization <- function(data0, data1 = NULL, data2 = NULL,
                             type = c("minmax", "zscore")){
 
@@ -122,12 +121,12 @@ standardization <- function(data0, data1 = NULL, data2 = NULL,
   
   
   return(data_result)
-  
-}
+  }
 df_standed <- standardization(data0 = train[,-1], data1 = test[,-1] , type = "zscore")
 train2 <- df_standed$data0
 test2 <- df_standed$data1
-                       
+
+#Spearman’s correlation
 reduce_redundency <- function (dat, threshold = 0.9, method = "spearman") 
 {
   if (!("data.frame" %in% class(dat))) {
@@ -159,7 +158,6 @@ reduce_redundency <- function (dat, threshold = 0.9, method = "spearman")
 }
 train3 <- data.frame(reduce_redundency(train2, threshold = 0.9)$dat.redd)
 dim(train3)   
-
 t2<-as.data.frame(train3)
 g1<-as.factor(train$group)
 t3<-data.frame(g1)
@@ -173,11 +171,11 @@ for(i in 1:ncol(t2))
   y1=kruskal.test(ab~b,data=aa)
   Pvaluekw[i]<-y1$p.value
 }
-
 Pvaluekw_p_Index <- which(do.call("rbind", lapply(Pvaluekw, as.data.frame)) < 0.05)
 train4 <- t2[,Pvaluekw_p_Index]
 dim(train4)  
-
+                                   
+#mRMR
 mrmr_feature<-train4
 mrmr_feature$y <-train_label
 target_indices = which(names(mrmr_feature)=='y')
@@ -197,48 +195,46 @@ model <- polr(as.factor(train$group)~., data = train5, Hess=TRUE)
 tstep <- step(model)
 summary(tstep)
 drop1(tstep)
-
 View(train5)
 train6 <- train2[,c(1,3,7,10,11)]
 train6 <- train5[,c(2,3,7,8,9,10)]
-
 library(MASS)
 model <- polr(as.factor(train$group) ~., data = train6, Hess=TRUE)
 summary(model)
-
+ 
+#P, OR and 95%CI                                  
 (ctable <- coef(summary(model)))
 p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
 (ctable <- cbind(ctable, "p value" = p))
 (ci <- confint(model))
 exp(cbind(OR = coef(model), ci))
 
+#brant test                                   
 library("brant")
 brant(model)
 
+#radscore                                
 coefPara <- coef(model)
 beta_matrix <- as.matrix(coefPara)
 Rad_matrix_train <- as.matrix((train6))
 Radscore_train <- Rad_matrix_train %*% beta_matrix
-
 test6 <- test2[,names(train6)]
 Rad_matrix_test <- as.matrix((test6))
 Radscore_test <- Rad_matrix_test %*% beta_matrix
-
+                                   
+#prediction
 pred_train_c <- predict(model,newdata=train2,type="class")
 (tab <- table(pred_train_c,train$group))
 sum(diag(tab))/sum(tab)
-
 pred_train_p <- predict(model,newdata=train2,type="probs")
-
 pred_test_c <- predict(model,newdata=test2,type="class")
 (tab <- table(pred_test_c,test$group))
 sum(diag(tab))/sum(tab)
-
 pred_test_p <- predict(model,newdata=test2,type="probs")
-
 write.csv(cbind(train6,Radscore_train,pred_train_p,pred_train_c),"result_train.csv")
 write.csv(cbind(test6,Radscore_test,pred_test_p,pred_test_c),"result_test.csv")
-
+                                   
+#calibration plots
 dt_train <- data.frame(Rad_score = Radscore_train) 
 ddist_train <- datadist(dt_train)
 options(datadist="ddist_train")
@@ -254,12 +250,10 @@ bias_corrected_c_index_train  <- abs(Dxy_train)/2+0.5
 orig_c_index_train <- abs(orig_Dxy_train)/2+0.5
 orig_c_index_train            
 bias_corrected_c_index_train  
-c_train <- rcorrcens(train_label~predict(lrm_train,newdata=dt_train),data=dt_train)  #C-index置信区间，与AUC略有不同，计算精度问题？
+c_train <- rcorrcens(train_label~predict(lrm_train,newdata=dt_train),data=dt_train) 
 c_train[1,1]
 c_train[1,1]-1.96*c_train[1,4]/2
 c_train[1,1]+1.96*c_train[1,4]/2
-
-
 dt_test <- data.frame(Rad_score = Radscore_test) 
 ddist_test <- datadist(dt_test)
 options(datadist="ddist_test")
@@ -280,15 +274,12 @@ c_test[1,1]
 c_test[1,1]
 c_test[1,1]-1.96*c_test[1,4]/2
 c_test[1,1]+1.96*c_test[1,4]/2
-
 tiff(file = "CT_primary_calibration.tiff", res =600, width =4800, height =3600, compression = "lzw")
 plot(cal.train,xlim = c(0,1),ylim= c(0,1),scat1d.opts=list(nhistSpike=240,side=1,frac=0),xlab="Nomogram predicted probability of adenocarcinoma")
 dev.off()
-
 tiff(file = "CT_validation_calibration.tiff", res =600, width =4800, height =3600, compression = "lzw")
 plot(cal.test,xlim = c(0,1),ylim= c(0,1),scat1d.opts=list(nhistSpike=240,side=1,frac=0),xlab="Validation nomogram predicted probability of adenocarcinoma")
 dev.off()
-
 tiff(file = "CT_calibration.tiff", res =600, width =4800, height =3600, compression = "lzw")
 plot(cal.train,xlab="Predicted probability",
      ylab="Actual probability",
