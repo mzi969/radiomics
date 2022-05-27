@@ -126,6 +126,22 @@ df_standed <- standardization(data0 = train[,-1], data1 = test[,-1] , type = "zs
 train2 <- df_standed$data0
 test2 <- df_standed$data1
 
+t2<-as.data.frame(train2)
+g1<-as.factor(train$group)
+t3<-data.frame(g1)
+head(t3)
+Pvaluekw<-c(rep(0,ncol(t2)))
+for(i in 1:ncol(t2))
+{
+  ab<-as.numeric(t2[1:nrow(t2),i])
+  b<-t3$g1
+  aa<-data.frame(ab,b)
+  y1=kruskal.test(ab~b,data=aa)
+  Pvaluekw[i]<-y1$p.value
+}
+Pvaluekw_p_Index <- which(do.call("rbind", lapply(Pvaluekw, as.data.frame)) < 0.05)
+train3 <- t2[,Pvaluekw_p_Index]
+dim(train3) 
 #Spearman’s correlation
 reduce_redundency <- function (dat, threshold = 0.9, method = "spearman") 
 {
@@ -156,25 +172,9 @@ reduce_redundency <- function (dat, threshold = 0.9, method = "spearman")
   }
   return(list(names = features_selected, dat.redd = dat.redd))
 }
-train3 <- data.frame(reduce_redundency(train2, threshold = 0.9)$dat.redd)
-dim(train3)   
-t2<-as.data.frame(train3)
-g1<-as.factor(train$group)
-t3<-data.frame(g1)
-head(t3)
-Pvaluekw<-c(rep(0,ncol(t2)))
-for(i in 1:ncol(t2))
-{
-  ab<-as.numeric(t2[1:nrow(t2),i])
-  b<-t3$g1
-  aa<-data.frame(ab,b)
-  y1=kruskal.test(ab~b,data=aa)
-  Pvaluekw[i]<-y1$p.value
-}
-Pvaluekw_p_Index <- which(do.call("rbind", lapply(Pvaluekw, as.data.frame)) < 0.05)
-train4 <- t2[,Pvaluekw_p_Index]
-dim(train4)  
-                                   
+train4 <- data.frame(reduce_redundency(train3, threshold = 0.9)$dat.redd)
+dim(train4)   
+                                  
 #mRMR
 mrmr_feature<-train4
 mrmr_feature$y <-train_label
@@ -251,9 +251,6 @@ orig_c_index_train <- abs(orig_Dxy_train)/2+0.5
 orig_c_index_train            
 bias_corrected_c_index_train  
 c_train <- rcorrcens(train_label~predict(lrm_train,newdata=dt_train),data=dt_train) 
-c_train[1,1]
-c_train[1,1]-1.96*c_train[1,4]/2
-c_train[1,1]+1.96*c_train[1,4]/2
 dt_test <- data.frame(Rad_score = Radscore_test) 
 ddist_test <- datadist(dt_test)
 options(datadist="ddist_test")
@@ -270,10 +267,6 @@ orig_c_index_test <- abs(orig_Dxy_test)/2+0.5
 orig_c_index_test
 bias_corrected_c_index_test
 c_test <- rcorrcens(test_label~predict(lrm_test,newdata=dt_test),data=dt_test) 
-c_test[1,1]
-c_test[1,1]
-c_test[1,1]-1.96*c_test[1,4]/2
-c_test[1,1]+1.96*c_test[1,4]/2
 tiff(file = "CT_primary_calibration.tiff", res =600, width =4800, height =3600, compression = "lzw")
 plot(cal.train,xlim = c(0,1),ylim= c(0,1),scat1d.opts=list(nhistSpike=240,side=1,frac=0),xlab="Nomogram predicted probability of adenocarcinoma")
 dev.off()
